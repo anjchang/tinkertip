@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tinker Tip Calculator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; }
+        canvas { max-width: 100%; height: auto; touch-action: none; }
+        .toggle-btn.active { background-color: #10b981; color: white; }
+    </style>
+</head>
+<!-- v0.1 a minimal visual tip calculator where you can tinker
+with the tax and tip and see what how percentage of each part contributes
+to the overall bill -->
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-3xl shadow-xl p-8">
+        <h1 class="text-3xl font-bold text-center mb-8 text-emerald-600">Tinker Tip Calculator</h1>
+        
+        <div class="space-y-6">
+            <!-- Bill -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Bill Amount ($)</label>
+                <input id="bill" type="number" value="100" step="0.01" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-2xl text-2xl focus:outline-none focus:border-emerald-500">
+            </div>
+            
+            <!-- Tax Mode -->
+            <div>
+                <div class="flex border border-gray-300 rounded-3xl p-1 mb-2">
+                    <button id="taxModePercent" class="flex-1 py-2 rounded-3xl text-sm font-medium toggle-btn">Percentage</button>
+                    <button id="taxModeFixed" class="flex-1 py-2 rounded-3xl text-sm font-medium active">Fixed Amount</button>
+                </div>
+                <div id="taxPercentGroup" class="hidden">
+                    <div class="flex justify-between items-baseline">
+                        <label class="block text-sm font-medium text-gray-700">Tax Percentage</label>
+                        <span id="taxPercentDisplay" class="text-xl font-semibold text-amber-600">8%</span>
+                    </div>
+                    <input id="taxPercent" type="range" min="0" max="20" value="8" step="0.1" 
+                           class="w-full accent-amber-500">
+                </div>
+                <div id="taxFixedGroup">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tax Amount ($)</label>
+                    <input id="tax" type="number" value="8" step="0.01" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-2xl text-2xl focus:outline-none focus:border-emerald-500">
+                </div>
+            </div>
+            
+            <!-- Tip Mode -->
+            <div>
+                <div class="flex border border-gray-300 rounded-3xl p-1 mb-2">
+                    <button id="tipModePercent" class="flex-1 py-2 rounded-3xl text-sm font-medium toggle-btn active">Percentage</button>
+                    <button id="tipModeFixed" class="flex-1 py-2 rounded-3xl text-sm font-medium">Fixed Amount</button>
+                </div>
+                
+                <div id="tipPercentGroup">
+                    <div class="flex justify-between items-baseline">
+                        <label class="block text-sm font-medium text-gray-700">Tip Percentage</label>
+                        <span id="tipPercentDisplay" class="text-3xl font-semibold text-emerald-600">18%</span>
+                    </div>
+                    <input id="tipPercent" type="range" min="0" max="30" value="18" step="1" 
+                           class="w-full accent-emerald-500">
+                </div>
+                
+                <div id="tipFixedGroup" class="hidden">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tip Amount ($)</label>
+                    <input id="tipFixed" type="number" value="18" step="0.01" 
+                           class="w-full px-4 py-3 border border-gray-300 rounded-2xl text-2xl focus:outline-none focus:border-emerald-500">
+                </div>
+            </div>
+            
+            <!-- Results -->
+            <div class="bg-gray-50 rounded-3xl p-6 space-y-4 text-lg">
+                <div class="flex justify-between"><span class="text-gray-600">Tip amount:</span> <span id="tipAmount" class="font-semibold">$18.00</span></div>
+                <div class="flex justify-between"><span class="text-gray-600">Total:</span> <span id="total" class="font-bold text-2xl">$126.00</span></div>
+            </div>
+            
+            <!-- Pie Chart -->
+            <div class="text-center">
+                <h2 class="text-xl font-semibold mb-3 text-gray-700">Breakdown of Total — Drag the green tip wedge!</h2>
+                <canvas id="pie" width="320" height="320" class="mx-auto"></canvas>
+                
+                <div class="flex justify-center gap-6 mt-4 text-sm">
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 bg-blue-500 rounded"></div><span>Bill</span></div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 bg-amber-500 rounded"></div><span>Tax</span></div>
+                    <div class="flex items-center gap-2"><div class="w-4 h-4 bg-emerald-500 rounded"></div><span>Tip</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // All inputs and elements
+        const billInput = document.getElementById('bill');
+        const taxInput = document.getElementById('tax');
+        const taxPercentSlider = document.getElementById('taxPercent');
+        const taxPercentDisplay = document.getElementById('taxPercentDisplay');
+        const tipPercentSlider = document.getElementById('tipPercent');
+        const tipPercentDisplay = document.getElementById('tipPercentDisplay');
+        const tipFixedInput = document.getElementById('tipFixed');
+        const tipAmountEl = document.getElementById('tipAmount');
+        const totalEl = document.getElementById('total');
+        const canvas = document.getElementById('pie');
+        const ctx = canvas.getContext('2d');
+
+        // Mode buttons and groups
+        let isTaxPercentMode = false;
+        let isTipPercentMode = true;
+
+        const taxModePercentBtn = document.getElementById('taxModePercent');
+        const taxModeFixedBtn = document.getElementById('taxModeFixed');
+        const taxPercentGroup = document.getElementById('taxPercentGroup');
+        const taxFixedGroup = document.getElementById('taxFixedGroup');
+
+        const tipModePercentBtn = document.getElementById('tipModePercent');
+        const tipModeFixedBtn = document.getElementById('tipModeFixed');
+        const tipPercentGroup = document.getElementById('tipPercentGroup');
+        const tipFixedGroup = document.getElementById('tipFixedGroup');
+
+        function switchTaxMode(toPercent) {
+            isTaxPercentMode = toPercent;
+            if (toPercent) {
+                taxModePercentBtn.classList.add('active');
+                taxModeFixedBtn.classList.remove('active');
+                taxPercentGroup.classList.remove('hidden');
+                taxFixedGroup.classList.add('hidden');
+            } else {
+                taxModePercentBtn.classList.remove('active');
+                taxModeFixedBtn.classList.add('active');
+                taxPercentGroup.classList.add('hidden');
+                taxFixedGroup.classList.remove('hidden');
+            }
+            calculateAndDraw();
+        }
+
+        function switchTipMode(toPercent) {
+            isTipPercentMode = toPercent;
+            if (toPercent) {
+                tipModePercentBtn.classList.add('active');
+                tipModeFixedBtn.classList.remove('active');
+                tipPercentGroup.classList.remove('hidden');
+                tipFixedGroup.classList.add('hidden');
+            } else {
+                tipModePercentBtn.classList.remove('active');
+                tipModeFixedBtn.classList.add('active');
+                tipPercentGroup.classList.add('hidden');
+                tipFixedGroup.classList.remove('hidden');
+            }
+            calculateAndDraw();
+        }
+
+        function calculateAndDraw(draggingTip = false) {
+            let bill = parseFloat(billInput.value) || 0;
+            
+            // Tax calculation
+            let tax = 0;
+            if (isTaxPercentMode) {
+                let taxPercent = parseFloat(taxPercentSlider.value) || 0;
+                tax = (taxPercent / 100) * bill;
+                taxInput.value = tax.toFixed(2);
+                taxPercentDisplay.textContent = `${taxPercent.toFixed(1)}%`;
+            } else {
+                tax = parseFloat(taxInput.value) || 0;
+                const taxPercent = bill > 0 ? (tax / bill) * 100 : 0;
+                taxPercentSlider.value = Math.min(Math.max(taxPercent, 0), 20);
+                taxPercentDisplay.textContent = `${taxPercent.toFixed(1)}%`;
+            }
+            
+            // Tip calculation
+            let tipAmount = 0;
+            if (isTipPercentMode) {
+                let tipPercent = parseFloat(tipPercentSlider.value) || 0;
+                tipPercentDisplay.textContent = `${tipPercent}%`;
+                tipAmount = (tipPercent / 100) * bill;
+                tipFixedInput.value = tipAmount.toFixed(2);
+            } else {
+                tipAmount = parseFloat(tipFixedInput.value) || 0;
+                const percent = bill > 0 ? (tipAmount / bill) * 100 : 0;
+                tipPercentSlider.value = Math.min(Math.max(Math.round(percent), 0), 30);
+                tipPercentDisplay.textContent = `${Math.round(percent)}%`;
+            }
+
+            const total = bill + tax + tipAmount;
+
+            tipAmountEl.textContent = `$${(tipAmount).toFixed(2)}`;
+            totalEl.textContent = `$${(total).toFixed(2)}`;
+
+            // Draw pie
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2;
+            const radius = 130;
+            const labelRadius = radius * 0.65;
+
+            if (total <= 0) {
+                ctx.beginPath();
+                ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+                ctx.fillStyle = '#e5e7eb';
+                ctx.fill();
+                return;
+            }
+
+            let startAngle = -Math.PI / 2;
+            const slices = [
+                { value: bill, color: '#3b82f6', label: `$${bill.toFixed(2)}` },
+                { value: tax, color: '#f59e0b', label: `$${tax.toFixed(2)}` },
+                { value: tipAmount, color: '#10b981', label: `$${tipAmount.toFixed(2)}` }
+            ];
+
+            slices.forEach((slice, index) => {
+                if (slice.value <= 0) return;
+                const sliceAngle = (slice.value / total) * Math.PI * 2;
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = slice.color;
+                ctx.fill();
+
+                if (slice.value / total > 0.08) {
+                    const midAngle = startAngle + sliceAngle / 2;
+                    const labelX = centerX + Math.cos(midAngle) * labelRadius;
+                    const labelY = centerY + Math.sin(midAngle) * labelRadius;
+
+                    ctx.save();
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 16px system-ui';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(slice.label, labelX, labelY);
+                    ctx.restore();
+                }
+
+                // Store angle info for dragging (only for tip slice)
+                if (index === 2) {
+                    window.tipStartAngle = startAngle;
+                    window.tipEndAngle = startAngle + sliceAngle;
+                }
+
+                startAngle += sliceAngle;
+            });
+        }
+
+        // Dragging on pie for tip
+        let isDragging = false;
+
+        function getAngle(x, y) {
+            const rect = canvas.getBoundingClientRect();
+            const cx = rect.left + canvas.width / 2;
+            const cy = rect.top + canvas.height / 2;
+            return Math.atan2(y - cy, x - cx);
+        }
+
+        canvas.addEventListener('mousedown', (e) => { isDragging = true; handleDrag(e); });
+        canvas.addEventListener('mousemove', (e) => { if (isDragging) handleDrag(e); });
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+
+        // Touch support for mobile
+        canvas.addEventListener('touchstart', (e) => { isDragging = true; handleDrag(e.touches[0]); });
+        canvas.addEventListener('touchmove', (e) => { if (isDragging) handleDrag(e.touches[0]); e.preventDefault(); });
+        canvas.addEventListener('touchend', () => isDragging = false);
+
+        function handleDrag(e) {
+            const angle = getAngle(e.clientX, e.clientY);
+            let normalized = (angle + Math.PI / 2 + Math.PI * 2) % (Math.PI * 2); // align with pie start
+
+            const totalAngle = normalized;
+            const bill = parseFloat(billInput.value) || 0;
+            const tax = parseFloat(taxInput.value) || 0;
+            const subtotal = bill + tax;
+
+            if (subtotal <= 0) return;
+
+            // Calculate new tip percentage based on drag angle (full circle = 100% of remaining)
+            let newTipPercent = (totalAngle / (Math.PI * 2)) * 50; // generous range up to 50%
+            newTipPercent = Math.max(0, Math.min(50, Math.round(newTipPercent)));
+
+            // Update tip in percent mode for smooth dragging
+            if (!isTipPercentMode) switchTipMode(true);
+            tipPercentSlider.value = newTipPercent;
+            calculateAndDraw(true);
+        }
+
+        // Event listeners for all inputs
+        billInput.addEventListener('input', calculateAndDraw);
+        taxInput.addEventListener('input', calculateAndDraw);
+        taxPercentSlider.addEventListener('input', calculateAndDraw);
+        tipPercentSlider.addEventListener('input', calculateAndDraw);
+        tipFixedInput.addEventListener('input', calculateAndDraw);
+
+        // Mode switches
+        taxModePercentBtn.addEventListener('click', () => switchTaxMode(true));
+        taxModeFixedBtn.addEventListener('click', () => switchTaxMode(false));
+        tipModePercentBtn.addEventListener('click', () => switchTipMode(true));
+        tipModeFixedBtn.addEventListener('click', () => switchTipMode(false));
+
+        // Initial draw
+        calculateAndDraw();
+    </script>
+</body>
+</html>
