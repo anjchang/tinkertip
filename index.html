@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tinker Tip Calculator</title>
@@ -12,8 +13,9 @@
     </style>
 </head>
 <!-- v0.1 a minimal visual tip calculator where you can tinker
-with the tax and tip and see what how percentage of each part contributes
-to the overall bill -->
+with the tax and tip and see what how percentage of each part contributes to the overall bill 
+v1.0 added manifest.json and sw.js 3/29/26
+-->
 <body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
     <div class="max-w-md w-full bg-white rounded-3xl shadow-xl p-8">
         <h1 class="text-3xl font-bold text-center mb-8 text-emerald-600">Tinker Tip Calculator</h1>
@@ -299,6 +301,11 @@ to the overall bill -->
 
         // Initial draw
         calculateAndDraw();
-    </script>
+
+//serviceworkers for PWABuilder
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/tinkertip/sw.js');
+  }
+</script>
 </body>
 </html>
