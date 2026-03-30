@@ -1,11 +1,13 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.tinkerstories.tinkertip",
       "sha256_cert_fingerprints": [
-        "92:B5:B2:92:2D:39:A8:AF:71:9B:98:86:69:11:3E:71:B4:EA:54:F9:3C:13:29:2E:C7:9D:8F:37:76:65:00:10"
+        "9F:01:22:42:8E:45:46:EF:E0:2B:92:C0:DB:0A:A2:B3:9C:93:B7:1A:AE:8E:82:C1:D1:71:6D:31:E9:8B:99:35"
       ]
     }
   }
